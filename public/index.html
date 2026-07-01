@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tour de France Pool 2024</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.3.1",
+        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+        "react-dom": "https://esm.sh/react-dom@18.3.1",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.400.0?external=react,react-dom"
+      }
+    }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .yellow-gradient { background: linear-gradient(135deg, #fef08a 0%, #facc15 100%); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module" data-presets="react">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            Trophy, 
+            BarChart3, 
+            Settings, 
+            User, 
+            Calendar, 
+            ChevronRight, 
+            Plus, 
+            Search,
+            AlertCircle,
+            CheckCircle2,
+            LayoutDashboard,
+            Bike
+        } from 'lucide-react';
+
+        const App = () => {
+            const [view, setView] = useState('standings');
+            const [standings, setStandings] = useState([]);
+            const [stages, setStages] = useState([]);
+            const [riders, setRiders] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetchData();
+            }, []);
+
+            const fetchData = async () => {
+                setLoading(true);
+                try {
+                    const [standingsRes, stagesRes] = await Promise.all([
+                        fetch('./api/standings'),
+                        fetch('./api/stages')
+                    ]);
+                    const standingsData = await standingsRes.json();
+                    const stagesData = await stagesRes.json();
+                    setStandings(standingsData.standings || []);
+                    setStages(stagesData.results || []);
+                } catch (err) {
+                    console.error("Failed to fetch data", err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    {/* Header */}
+                    <header className="bg-white border-b sticky top-0 z-10">
+                        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-bold text-xl">
+                                <div className="bg-yellow-400 p-1.5 rounded-lg">
+                                    <Bike className="w-6 h-6 text-black" />
+                                </div>
+                                <span className="hidden sm:inline">Tour Pool 2024</span>
+                            </div>
+                            <nav className="flex gap-1">
+                                <NavButton active={view === 'standings'} onClick={() => setView('standings')} icon={<BarChart3 className="w-4 h-4"/>} label="Standings" />
+                                <NavButton active={view === 'results'} onClick={() => setView('results')} icon={<Calendar className="w-4 h-4"/>} label="Results" />
+                                <NavButton active={view === 'admin'} onClick={() => setView('admin')} icon={<Settings className="w-4 h-4"/>} label="Admin" />
+                            </nav>
+                        </div>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-8">
+                        {loading ? (
+                            <div className="flex items-center justify-center h-64">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+                            </div>
+                        ) : (
+                            <>
+                                {view === 'standings' && <StandingsView standings={standings} />}
+                                {view === 'results' && <ResultsView stages={stages} />}
+                                {view === 'admin' && <AdminView onRefresh={fetchData} />}
+                            </>
+                        )}
+                    </main>
+
+                    <footer className="py-8 text-center text-gray-500 text-sm">
+                        Tour de France Pool &copy; 2024
+                    </footer>
+                </div>
+            );
+        };
+
+        const NavButton = ({ active, onClick, icon, label }) => (
+            <button 
+                onClick={onClick}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${
+                    active ? 'bg-yellow-100 text-yellow-800 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                }`}
+            >
+                {icon}
+                <span className="text-sm">{label}</span>
+            </button>
+        );
+
+        const StandingsView = ({ standings }) => {
+            const [selectedPlayer, setSelectedPlayer] = useState(null);
+
+            return (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                            <Trophy className="text-yellow-500" /> General Standings
+                        </h2>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-gray-50 border-b">
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-16">Pos</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Player</th>
+                                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Points</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {standings.map((player, index) => (
+                                    <React.Fragment key={player.id}>
+                                        <tr 
+                                            onClick={() => setSelectedPlayer(selectedPlayer === player.id ? null : player.id)}
+                                            className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                                                    index === 0 ? 'bg-yellow-400 text-white' : 
+                                                    index === 1 ? 'bg-gray-300 text-white' : 
+                                                    index === 2 ? 'bg-orange-300 text-white' : 'text-gray-400'
+                                                }`}>
+                                                    {index + 1}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="font-semibold text-gray-900 flex items-center gap-2">
+                                                    {player.name}
+                                                    {selectedPlayer === player.id ? <ChevronRight className="w-4 h-4 rotate-90 transition-transform" /> : <ChevronRight className="w-4 h-4" />}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="text-lg font-bold text-gray-900">{Math.round(player.score)}</div>
+                                            </td>
+                                        </tr>
+                                        {selectedPlayer === player.id && (
+                                            <tr className="bg-gray-50/50">
+                                                <td colSpan="3" className="px-6 py-4">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                        {player.riders.map(r => (
+                                                            <div key={r.id} className="bg-white p-2 rounded-lg border text-xs flex justify-between items-center">
+                                                                <span className="font-medium truncate mr-1">{r.name}</span>
+                                                                <span className="text-gray-400 bg-gray-100 px-1 rounded">{r.count} owners</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                                {standings.length === 0 && (
+                                    <tr>
+                                        <td colSpan="3" className="px-6 py-12 text-center text-gray-500">
+                                            No players or scores yet. Go to Admin to import data!
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        const ResultsView = ({ stages }) => {
+            const groupedStages = stages.reduce((acc, curr) => {
+                if (!acc[curr.stage_num]) acc[curr.stage_num] = [];
+                acc[curr.stage_num].push(curr);
+                return acc;
+            }, {});
+
+            const stageNums = Object.keys(groupedStages).sort((a, b) => b - a);
+
+            return (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        <Calendar className="text-blue-500" /> Stage Results
+                    </h2>
+
+                    {stageNums.map(num => (
+                        <div key={num} className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                            <div className="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
+                                <h3 className="font-bold text-lg">Stage {num}</h3>
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-0 divide-x divide-gray-100">
+                                <div className="p-6">
+                                    <h4 className="text-xs font-bold uppercase text-gray-400 mb-4 tracking-widest">Top 10 Finishers</h4>
+                                    <div className="space-y-3">
+                                        {groupedStages[num].filter(r => r.type === 'stage').sort((a, b) => a.rank - b.rank).map(r => (
+                                            <div key={r.id} className="flex items-center justify-between text-sm">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="w-5 text-gray-400 font-mono">{r.rank}.</span>
+                                                    <span className="font-medium">{r.rider_name}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="p-6 bg-gray-50/50">
+                                    <h4 className="text-xs font-bold uppercase text-gray-400 mb-4 tracking-widest">Classification Leaders</h4>
+                                    <div className="space-y-4">
+                                        <JerseyLeader type="yellow" label="Yellow Jersey" icon="🟨" data={groupedStages[num].find(r => r.type === 'yellow' && r.rank === 1)} />
+                                        <JerseyLeader type="green" label="Green Jersey" icon="🟩" data={groupedStages[num].find(r => r.type === 'green' && r.rank === 1)} />
+                                        <JerseyLeader type="mountain" label="Mountain Jersey" icon="⬜" data={groupedStages[num].find(r => r.type === 'mountain' && r.rank === 1)} />
+                                        <JerseyLeader type="white" label="White Jersey" icon="⚪" data={groupedStages[num].find(r => r.type === 'white' && r.rank === 1)} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+
+                    {stageNums.length === 0 && (
+                        <div className="text-center py-12 text-gray-500">
+                            No stage results entered yet.
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const JerseyLeader = ({ type, label, icon, data }) => (
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <span className="text-xl">{icon}</span>
+                    <div>
+                        <div className="text-[10px] uppercase font-bold text-gray-400 leading-none">{label}</div>
+                        <div className="text-sm font-semibold">{data ? data.rider_name : 'No leader'}</div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const AdminView = ({ onRefresh }) => {
+            const [secret, setSecret] = useState('');
+            const [isAuthorized, setIsAuthorized] = useState(false);
+            const [csvText, setCsvText] = useState('');
+            const [stageNum, setStageNum] = useState(1);
+            const [riders, setRiders] = useState([]);
+            const [stageResults, setStageResults] = useState(Array(10).fill(''));
+            const [jerseys, setJerseys] = useState({
+                yellow: Array(5).fill(''),
+                green: Array(5).fill(''),
+                mountain: Array(5).fill(''),
+                white: Array(3).fill('')
+            });
+
+            useEffect(() => {
+                if (isAuthorized) {
+                    fetch('./api/admin/riders')
+                        .then(r => r.json())
+                        .then(data => setRiders(data.riders));
+                }
+            }, [isAuthorized]);
+
+            const handleLogin = () => {
+                if (secret === 'tdf2024') setIsAuthorized(true);
+                else alert('Wrong secret!');
+            };
+
+            const handleImport = async () => {
+                const lines = csvText.trim().split('\n');
+                const players = [];
+                // Simple CSV parser: Header: Naam, Renner 1, Renner 2, ...
+                // Skip header
+                for (let i = 1; i < lines.length; i++) {
+                    const parts = lines[i].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+                    if (parts.length < 2) continue;
+                    players.push({
+                        name: parts[0],
+                        riders: parts.slice(1).filter(r => r !== '')
+                    });
+                }
+
+                const res = await fetch('./api/admin/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret, data: players })
+                });
+
+                if (res.ok) {
+                    alert('Imported successfully!');
+                    setCsvText('');
+                    onRefresh();
+                }
+            };
+
+            const handleSaveResults = async () => {
+                const results = [];
+                // Stage results
+                stageResults.forEach((riderName, idx) => {
+                    if (!riderName) return;
+                    const rider = riders.find(r => r.name === riderName);
+                    if (rider) results.push({ rider_id: rider.id, rank: idx + 1, type: 'stage' });
+                });
+                // Jerseys
+                Object.keys(jerseys).forEach(type => {
+                    jerseys[type].forEach((riderName, idx) => {
+                        if (!riderName) return;
+                        const rider = riders.find(r => r.name === riderName);
+                        if (rider) results.push({ rider_id: rider.id, rank: idx + 1, type });
+                    });
+                });
+
+                const res = await fetch('./api/admin/results', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret, stage_num: stageNum, results })
+                });
+
+                if (res.ok) {
+                    alert('Results saved!');
+                    onRefresh();
+                }
+            };
+
+            if (!isAuthorized) {
+                return (
+                    <div className="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-sm border mt-12 text-center">
+                        <Settings className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <h2 className="text-xl font-bold mb-6">Admin Access</h2>
+                        <input 
+                            type="password" 
+                            className="w-full p-3 border rounded-xl mb-4 text-center focus:ring-2 focus:ring-yellow-400 outline-none"
+                            placeholder="Enter Secret"
+                            value={secret}
+                            onChange={e => setSecret(e.target.value)}
+                        />
+                        <button 
+                            onClick={handleLogin}
+                            className="w-full bg-black text-white p-3 rounded-xl font-bold hover:bg-gray-800 transition-colors"
+                        >
+                            Log In
+                        </button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="space-y-12 pb-20">
+                    <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                        <h3 className="text-lg font-bold mb-4">Bulk Import (CSV)</h3>
+                        <p className="text-sm text-gray-500 mb-4">Paste CSV: "Player Name, Rider 1, Rider 2, ... Rider 15"</p>
+                        <textarea 
+                            className="w-full h-48 p-4 border rounded-xl font-mono text-sm focus:ring-2 focus:ring-yellow-400 outline-none"
+                            placeholder="Naam, Renner 1, Renner 2..."
+                            value={csvText}
+                            onChange={e => setCsvText(e.target.value)}
+                        />
+                        <button 
+                            onClick={handleImport}
+                            className="mt-4 bg-black text-white px-6 py-2 rounded-xl font-bold"
+                        >
+                            Import Data
+                        </button>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl border shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-bold">Enter Stage Results</h3>
+                            <div className="flex items-center gap-2">
+                                <span>Stage</span>
+                                <input 
+                                    type="number" 
+                                    className="w-16 p-2 border rounded-lg text-center"
+                                    value={stageNum}
+                                    onChange={e => setStageNum(parseInt(e.target.value))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-8">
+                            <div>
+                                <h4 className="font-bold mb-4 text-gray-600">Top 10 Finishers</h4>
+                                {stageResults.map((val, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <span className="w-8 py-2 text-gray-400 font-bold">{i+1}.</span>
+                                        <RiderSelect 
+                                            riders={riders} 
+                                            value={val} 
+                                            onChange={v => {
+                                                const next = [...stageResults];
+                                                next[i] = v;
+                                                setStageResults(next);
+                                            }} 
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="space-y-6">
+                                <JerseyInput label="Yellow Jersey (Top 5)" count={5} values={jerseys.yellow} onChange={v => setJerseys({...jerseys, yellow: v})} riders={riders} />
+                                <JerseyInput label="Green Jersey (Top 5)" count={5} values={jerseys.green} onChange={v => setJerseys({...jerseys, green: v})} riders={riders} />
+                                <JerseyInput label="Mountain (Top 5)" count={5} values={jerseys.mountain} onChange={v => setJerseys({...jerseys, mountain: v})} riders={riders} />
+                                <JerseyInput label="White (Top 3)" count={3} values={jerseys.white} onChange={v => setJerseys({...jerseys, white: v})} riders={riders} />
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={handleSaveResults}
+                            className="mt-8 w-full bg-yellow-400 text-black p-4 rounded-xl font-bold hover:bg-yellow-500 transition-colors"
+                        >
+                            Save All Stage Results
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const JerseyInput = ({ label, count, values, onChange, riders }) => (
+            <div>
+                <h4 className="font-bold mb-2 text-gray-600">{label}</h4>
+                {Array(count).fill(0).map((_, i) => (
+                    <div key={i} className="mb-2">
+                        <RiderSelect 
+                            riders={riders} 
+                            value={values[i]} 
+                            onChange={v => {
+                                const next = [...values];
+                                next[i] = v;
+                                onChange(next);
+                            }} 
+                        />
+                    </div>
+                ))}
+            </div>
+        );
+
+        const RiderSelect = ({ riders, value, onChange }) => (
+            <div className="relative w-full">
+                <input 
+                    list="riders-list"
+                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-yellow-400 outline-none"
+                    placeholder="Search rider..."
+                    value={value}
+                    onChange={e => onChange(e.target.value)}
+                />
+                <datalist id="riders-list">
+                    {riders.map(r => <option key={r.id} value={r.name} />)}
+                </datalist>
+            </div>
+        );
+
+        createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
